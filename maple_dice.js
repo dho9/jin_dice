@@ -1,4 +1,6 @@
-const TOTAL=40,FACES=['⚀','⚁','⚂','⚃','⚄','⚅'],COLS=11,ROWS=11;
+const TOTAL=40,FACES=['1','2','3','4','5','6'],COLS=11,ROWS=11;
+const DICE_DOTS={1:[[50,50]],2:[[28,28],[72,72]],3:[[28,28],[50,50],[72,72]],4:[[28,28],[72,28],[28,72],[72,72]],5:[[28,28],[72,28],[50,50],[28,72],[72,72]],6:[[28,22],[72,22],[28,50],[72,50],[28,78],[72,78]]};
+function diceSvg(v,size=26){const dots=DICE_DOTS[v].map(([x,y])=>`<circle cx="${x}%" cy="${y}%" r="9%" fill="currentColor"/>`).join('');return`<svg width="${size}" height="${size}" viewBox="0 0 100 100" style="display:block">${dots}</svg>`;}
 let coinVals=[0,500,100,600,400,400,300,400,300,400,400,100,600,100,400,100,300,300,400,100,150,400,100,300,300,300,100,300,400,100,600,0,600,600,600,400,600,400,100,300,300];
 let specialCells=[{cellNum:16,type:'move',moveVal:-3},{cellNum:23,type:'move',moveVal:3},{cellNum:31,type:'mystery',moveVal:0},{cellNum:33,type:'move',moveVal:-2}];
 const PATH_POS=[null];
@@ -60,7 +62,8 @@ function renderDice(){
     const lbl=document.createElement('div');lbl.className='dlabel';lbl.textContent=`주사위 ${d+1}`;row.appendChild(lbl);
     const opts=document.createElement('div');opts.className='dopts';
     for(let v=1;v<=6;v++){
-      const btn=document.createElement('button');btn.className='dbtn'+(chosenDice[d]===v?' sel':'');btn.textContent=FACES[v-1];
+      const btn=document.createElement('button');btn.className='dbtn'+(chosenDice[d]===v?' sel':'');btn.innerHTML=diceSvg(v);
+      btn.title=`${v}`;
       btn.onclick=()=>{chosenDice[d]=v;renderDice()};opts.appendChild(btn);
     }
     row.appendChild(opts);
@@ -229,7 +232,7 @@ function displayResults(results){
   const sec=document.getElementById('resultsSection');sec.classList.add('visible','pop');setTimeout(()=>sec.classList.remove('pop'),400);
   const best=results[0];
   document.getElementById('bestCoin').textContent=(best.coins>=0?'+':'')+best.coins.toLocaleString()+' 코인';
-  document.getElementById('bestOrder').textContent=best.order.map(d=>FACES[d-1]).join('→');
+  document.getElementById('bestOrder').innerHTML=best.order.map((d,j)=>`<span style="display:inline-flex;align-items:center;vertical-align:middle;color:var(--gold)">${diceSvg(d,16)}</span>${j<best.order.length-1?'<span style="font-size:10px;color:var(--text3);margin:0 1px">→</span>':''}`).join('');
   document.getElementById('bestPos').textContent=best.pos+'번 칸';
   document.getElementById('totalCases').textContent=results.length+'가지';
   const list=document.getElementById('resultList');list.innerHTML='';
@@ -241,7 +244,7 @@ function displayResults(results){
       const sp=getSpecial(d.dest);if(sp&&sp.type==='mystery')return`${d.dest}번(?)`;
       return`${d.dest}번(+${coinVals[d.dest]||0})`;
     }).join(' → ');
-    item.innerHTML=`<div class="rb ${rc}">${i+1}</div><div class="rbody"><div class="rorder">${r.order.map((d,j)=>`<span>${FACES[d-1]}</span>${j<r.order.length-1?'<span class="rarr">▶</span>':''}`).join('')}<span style="font-size:9px;color:var(--text3);margin-left:3px">(${r.order.join('-')})</span></div><div class="rpath">${pathStr}</div></div><div class="rcoin ${r.coins<0?'neg':''}">${r.coins>=0?'+':''}${r.coins.toLocaleString()}</div>`;
+    item.innerHTML=`<div class="rb ${rc}">${i+1}</div><div class="rbody"><div class="rorder">${r.order.map((d,j)=>`<span style="display:inline-flex;align-items:center;vertical-align:middle;color:var(--gold)">${diceSvg(d,16)}</span>${j<r.order.length-1?'<span class="rarr">▶</span>':''}`).join('')}<span style="font-size:9px;color:var(--text3);margin-left:3px">(${r.order.join('-')})</span></div><div class="rpath">${pathStr}</div></div><div class="rcoin ${r.coins<0?'neg':''}">${r.coins>=0?'+':''}${r.coins.toLocaleString()}</div>`;
     list.appendChild(item);
   });
   sec.scrollIntoView({behavior:'smooth',block:'start'});
