@@ -13,7 +13,10 @@ let currentPos=1,chosenDice=[6,5,4],highlightedPath=[];
 
 function getSpecial(n){return specialCells.find(s=>s.cellNum===n)||null}
 function cellArrow(i){if(i<=11)return'◀';if(i<=20)return'▲';if(i<=31)return'▶';return'▼'}
-
+document.addEventListener('click', e => {
+  if (!e.target.closest('.help-btn') && !e.target.closest('.help-popup'))
+    document.querySelector('.help-popup')?.classList.remove('show');
+});
 function renderBoard(){
   const grid=document.getElementById('boardGrid');
   grid.innerHTML='';
