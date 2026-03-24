@@ -30,11 +30,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;back
 .header h1{font-family:'Jua',sans-serif;font-size:24px;background:linear-gradient(180deg,#fff 0%,var(--accent2) 40%,var(--neon-pink) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 10px rgba(184,122,255,.8));letter-spacing:.06em;margin-bottom:2px;}
 .header .sub{font-size:10px;color:var(--text2);letter-spacing:.15em;text-transform:uppercase;text-shadow:0 0 8px var(--accent)}
 .hl{width:200px;height:1px;background:linear-gradient(90deg,transparent,var(--neon-pink),var(--accent2),transparent);margin:6px auto 0;box-shadow:0 0 6px var(--neon-pink)}
-.tabs{display:flex;gap:6px;margin-bottom:12px}
-.tab{flex:1;padding:9px 0;text-align:center;font-family:'Jua',sans-serif;font-size:13px;cursor:pointer;background:linear-gradient(180deg,#2a1460,#180a40);color:var(--text3);border:2px solid rgba(80,40,150,.6);border-radius:4px;transition:all .2s;clip-path:polygon(4px 0%,calc(100% - 4px) 0%,100% 4px,100% calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,0% calc(100% - 4px),0% 4px);}
-.tab.active{background:linear-gradient(180deg,#7040d0,#4020a0);color:#fff;border-color:var(--border2);box-shadow:0 0 14px rgba(120,80,220,.7),inset 0 1px 0 rgba(255,255,255,.2);text-shadow:0 0 8px rgba(255,255,255,.5);}
-.tab:hover:not(.active){color:var(--text2);background:linear-gradient(180deg,#351870,#1e0d50);border-color:var(--border)}
-.page{display:none}.page.active{display:block}
+.tabs{display:none}
+.page{display:block}
 
 /* =============================================
    레이아웃: board-col이 전체 너비, side-col은 board-grid 오른쪽 여백에 absolute
