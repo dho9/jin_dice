@@ -18,6 +18,10 @@ let chosenDice=[6,5,4];
 let highlightedPath=[];
 let specialDiceEffects=[null,null,null];
 
+// ── 편집 모드 ──────────────────────────────────────────
+let editMode=false;
+let selectedCells=new Set();
+
 const SPECIAL_EFFECTS=[
   {id:'x2',label:'×2',desc:'이동칸 ×2',color:'#ffd84a'},
   {id:'x3',label:'×3',desc:'이동칸 ×3',color:'#ff9f1c'},
@@ -54,10 +58,12 @@ function renderBoard(){
       const idx=lookup[`${r},${c}`];
       if(idx!==undefined){
         const sp=getSpecial(idx);
-        const isCur=idx===currentPos,isOn=highlightedPath.includes(idx),corner=CORNERS.has(idx);
+        const isCur=idx===currentPos,isOn=highlightedPath.includes(idx),corner=CORNERS.has(idx),isSel=editMode&&selectedCells.has(idx);
         let cls='bc';
         if(corner)cls+=' corner';
-        if(isCur)cls+=' cur';else if(isOn)cls+=' onpath';
+        if(editMode)cls+=' edit-mode-cell';
+        if(isSel)cls+=' edit-selected';
+        else if(isCur)cls+=' cur';else if(isOn)cls+=' onpath';
         if(sp){if(sp.type==='mystery')cls+=' mystery';else cls+=sp.moveVal>=0?' move-plus':' move-minus';}
         div.className=cls;
         let inner=`<span class="cn">${idx}</span>`;
@@ -72,8 +78,16 @@ function renderBoard(){
         if(!corner)inner+=`<span style="font-size:5px;color:var(--text3);line-height:1">${cellArrow(idx)}</span>`;
         if(isCur)inner+=`<span class="piece"><svg width="20" height="24" viewBox="0 0 20 24" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="pg" cx="40%" cy="35%"><stop offset="0%" stop-color="#80ffff"/><stop offset="60%" stop-color="#00b8d4"/><stop offset="100%" stop-color="#005f7f"/></radialGradient></defs><ellipse cx="10" cy="22" rx="5" ry="2.2" fill="rgba(0,220,255,0.25)"/><circle cx="10" cy="10" r="9" fill="url(#pg)" stroke="#00e5ff" stroke-width="2"/><circle cx="10" cy="10" r="4.5" fill="white" opacity="0.95"/><circle cx="8" cy="8" r="1.5" fill="white" opacity="0.6"/></svg></span>`;
         div.innerHTML=inner;
-        div.onclick=()=>{currentPos=idx;highlightedPath=[];renderBoard();document.getElementById('posDisplay').textContent=`${idx}번 칸${idx===1?' (START)':''}`};
-        div.oncontextmenu=(e)=>{e.preventDefault();openCellEditor(idx,div);};
+        div.onclick=()=>{
+          if(editMode){
+            if(selectedCells.has(idx)){selectedCells.delete(idx);}else{selectedCells.add(idx);}
+            renderBoard();updateEditPanelSelection();
+          }else{
+            currentPos=idx;highlightedPath=[];renderBoard();
+            document.getElementById('posDisplay').textContent=`${idx}번 칸${idx===1?' (START)':''}`;
+          }
+        };
+        div.oncontextmenu=(e)=>{e.preventDefault();if(!editMode)openCellEditor(idx,div);};
       }else{
         div.className=(r===5&&c===5)?'bc icenter':'bc inner';
       }
@@ -570,6 +584,170 @@ function displayResults(results){
     list.appendChild(item);
   });
   sec.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── 편집 모드 핼퍼 ──────────────────────────────────────────
+function epSetType(btn){
+  const wrap=document.getElementById('epBulkTypes');
+  if(wrap)wrap.querySelectorAll('.ep-type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const type=btn.dataset.type;
+  const presets=document.getElementById('epPresets');
+  if(presets){
+    if(type==='coin'||type==='mystery'){
+      presets.style.display='block';
+      presets.querySelector('.ep-preset-label').textContent=type==='mystery'?'? 코인 빠른 선택':'코인 빠른 선택';
+    }else{
+      presets.style.display='none';
+    }
+  }
+}
+
+function setBulkVal(v){
+  const inp=document.getElementById('epBulkVal');
+  if(inp)inp.value=v;
+}
+
+function toggleEditMode(){
+  editMode=!editMode;
+  selectedCells.clear();
+  const btn=document.getElementById('editModeBtn');
+  const panel=document.getElementById('editPanel');
+  if(editMode){
+    btn.classList.add('active');
+    btn.innerHTML='<span class="emb-icon">✏️</span><span class="emb-text">편집 종료</span>';
+    panel.classList.add('open');
+    // 우클릭 팝업 닫기
+    closeEditPopup();
+  }else{
+    btn.classList.remove('active');
+    btn.innerHTML='<span class="emb-icon">✏️</span><span class="emb-text">보드 편집</span>';
+    panel.classList.remove('open');
+    document.getElementById('epSelCount').textContent='0';
+    document.getElementById('epSelList').innerHTML='<div class="ep-hint">편집 모드에서 칸을 클릭하여 선택하세요</div>';
+  }
+  renderBoard();
+}
+
+function updateEditPanelSelection(){
+  const cnt=selectedCells.size;
+  document.getElementById('epSelCount').textContent=cnt;
+  const list=document.getElementById('epSelList');
+  if(cnt===0){
+    list.innerHTML='<div class="ep-hint">편집 모드에서 칸을 클릭하여 선택하세요</div>';
+    return;
+  }
+  const sorted=[...selectedCells].sort((a,b)=>a-b);
+  list.innerHTML=sorted.map(idx=>{
+    const sp=getSpecial(idx);
+    let typeLabel='',typeClass='';
+    if(sp&&sp.type==='mystery'){typeLabel='?칸';typeClass='ep-badge-myst';}
+    else if(sp&&sp.type==='move'){typeLabel=(sp.moveVal>=0?'+':'')+sp.moveVal+'칸 이동';typeClass=sp.moveVal>=0?'ep-badge-plus':'ep-badge-minus';}
+    else{typeLabel='+'+coinVals[idx]+'코인';typeClass='ep-badge-coin';}
+    return`<div class="ep-cell-chip" onclick="openSingleCellEdit(${idx})" title="${idx}번 칸 개별 수정"><span class="ep-cell-num">${idx}</span><span class="ep-badge ${typeClass}">${typeLabel}</span><button class="ep-chip-del" onclick="event.stopPropagation();deselectCell(${idx})">×</button></div>`;
+  }).join('');
+}
+
+function deselectCell(idx){
+  selectedCells.delete(idx);
+  renderBoard();
+  updateEditPanelSelection();
+}
+
+function selectAllCells(){
+  for(let i=1;i<=TOTAL;i++)selectedCells.add(i);
+  renderBoard();
+  updateEditPanelSelection();
+}
+
+function clearSelection(){
+  selectedCells.clear();
+  renderBoard();
+  updateEditPanelSelection();
+}
+
+function applyBulkEdit(){
+  if(selectedCells.size===0){alert('먼저 칸을 선택하세요!');return;}
+  const type=document.querySelector('.ep-type-btn.active')?.dataset.type||'coin';
+  const val=parseInt(document.getElementById('epBulkVal').value)||0;
+  selectedCells.forEach(idx=>{
+    specialCells=specialCells.filter(s=>s.cellNum!==idx);
+    if(type==='coin'){coinVals[idx]=val;}
+    else if(type==='plus'){specialCells.push({cellNum:idx,type:'move',moveVal:Math.abs(val)||3});coinVals[idx]=0;}
+    else if(type==='minus'){specialCells.push({cellNum:idx,type:'move',moveVal:-(Math.abs(val)||3)});coinVals[idx]=0;}
+    else if(type==='mystery'){specialCells.push({cellNum:idx,type:'mystery',moveVal:0});coinVals[idx]=val;}
+  });
+  renderBoard();
+  updateEditPanelSelection();
+  showSave();
+  // 완료 피드백
+  const btn=document.getElementById('epApplyBtn');
+  btn.textContent='✓ 적용됨!';btn.style.color='var(--neon-green)';
+  setTimeout(()=>{btn.textContent='✦ 일괄 적용';btn.style.color='';},1200);
+}
+
+function openSingleCellEdit(idx){
+  // 편집 모드에서 개별 칸 수정: 패널 하단 영역에 인라인 폼 표시
+  const panel=document.getElementById('epSingleEdit');
+  const sp=getSpecial(idx);
+  const curType=sp?sp.type:'coin';
+  const curTypeMapped=curType==='move'?(sp.moveVal>=0?'plus':'minus'):curType;
+
+  panel.innerHTML=`
+    <div class="ep-single-header">
+      <span style="font-family:'Jua',sans-serif;font-size:13px;color:var(--accent2);">${idx}번 칸 개별 수정</span>
+      <button class="ep-close-single" onclick="document.getElementById('epSingleEdit').innerHTML=''">✕</button>
+    </div>
+    <div class="ep-type-row" id="epSingleTypes">
+      <button class="ep-type-btn${curTypeMapped==='coin'?' active':''}" data-type="coin">💰 코인</button>
+      <button class="ep-type-btn${curTypeMapped==='plus'?' active':''}" data-type="plus">▶ +이동</button>
+      <button class="ep-type-btn${curTypeMapped==='minus'?' active':''}" data-type="minus">◀ -이동</button>
+      <button class="ep-type-btn${curTypeMapped==='mystery'?' active':''}" data-type="mystery">? 랜덤</button>
+    </div>
+    <div id="epSingleValWrap" class="ep-val-wrap"></div>
+    <button class="ep-apply-btn" id="epSingleSave" onclick="saveSingleFromPanel(${idx})">✓ 저장</button>
+  `;
+  panel.querySelectorAll('.ep-type-btn').forEach(b=>{
+    b.onclick=()=>{
+      panel.querySelectorAll('.ep-type-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      renderEpSingleVal(b.dataset.type, idx);
+    };
+  });
+  renderEpSingleVal(curTypeMapped, idx);
+}
+
+function renderEpSingleVal(type, idx){
+  const wrap=document.getElementById('epSingleValWrap');
+  if(!wrap)return;
+  const sp=getSpecial(idx);
+  if(type==='coin'){
+    wrap.innerHTML=`<label class="ep-label">코인 값</label><input class="ep-input" id="epSingleInput" type="number" min="0" step="50" value="${coinVals[idx]||0}">`;
+  }else if(type==='plus'){
+    const v=sp&&sp.type==='move'&&sp.moveVal>0?sp.moveVal:3;
+    wrap.innerHTML=`<label class="ep-label">앞으로 이동 칸 수</label><input class="ep-input" id="epSingleInput" type="number" min="1" max="20" value="${v}">`;
+  }else if(type==='minus'){
+    const v=sp&&sp.type==='move'&&sp.moveVal<0?Math.abs(sp.moveVal):3;
+    wrap.innerHTML=`<label class="ep-label">뒤로 이동 칸 수</label><input class="ep-input" id="epSingleInput" type="number" min="1" max="20" value="${v}">`;
+  }else{
+    wrap.innerHTML=`<label class="ep-label">? 칸 코인 (확률 지급액)</label><input class="ep-input" id="epSingleInput" type="number" min="0" step="50" value="${coinVals[idx]||0}">`;
+  }
+}
+
+function saveSingleFromPanel(idx){
+  const panel=document.getElementById('epSingleEdit');
+  const activeType=panel.querySelector('.ep-type-btn.active')?.dataset.type;
+  const inp=document.getElementById('epSingleInput');
+  const val=inp?parseInt(inp.value)||0:0;
+  specialCells=specialCells.filter(s=>s.cellNum!==idx);
+  if(activeType==='coin'){coinVals[idx]=val;}
+  else if(activeType==='plus'){specialCells.push({cellNum:idx,type:'move',moveVal:Math.abs(val)||3});coinVals[idx]=0;}
+  else if(activeType==='minus'){specialCells.push({cellNum:idx,type:'move',moveVal:-(Math.abs(val)||3)});coinVals[idx]=0;}
+  else if(activeType==='mystery'){specialCells.push({cellNum:idx,type:'mystery',moveVal:0});coinVals[idx]=val;}
+  panel.innerHTML='';
+  renderBoard();
+  updateEditPanelSelection();
+  showSave();
 }
 
 renderBoard();renderDice();
